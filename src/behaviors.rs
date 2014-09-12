@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::sync::Mutex;
-use State;
+use {Entity, State};
 
 /// Builder for a `Behavior`.
 pub trait BehaviorFactory<S, T> {
@@ -18,7 +18,7 @@ impl<T> BehaviorFactory<(), T> for Constant<T> {
 }
 
 /// Prototype for a `Behavior` whose value is an alias of something else.
-pub struct Alias<T>(pub fn(&State) -> T);
+pub struct Alias<T>(pub fn(&State, Option<Entity>) -> T);
 
 impl<T> BehaviorFactory<(), T> for Alias<T> {
     fn into_behavior(self) -> Behavior<(), T> {
@@ -28,7 +28,7 @@ impl<T> BehaviorFactory<(), T> for Alias<T> {
 }
 
 /// Prototype for a `Behavior` whose value stores something.
-pub struct Storage<S, T>(pub S, pub fn(&mut S, &State) -> T);
+pub struct Storage<S, T>(pub S, pub fn(&mut S, &State, Option<Entity>) -> T);
 
 impl<S: Send, T> BehaviorFactory<S, T> for Storage<S, T> {
     fn into_behavior(self) -> Behavior<S, T> {
@@ -44,22 +44,22 @@ pub struct Behavior<S, T>(Behavior_<S, T>);
 
 enum Behavior_<S, T> {
     ConstantBehavior_(T),
-    AliasBehavior_(fn(&State) -> T),
-    StorageBehavior_(Mutex<Option<S>>, fn(&mut S, &State) -> T),
+    AliasBehavior_(fn(&State, Option<Entity>) -> T),
+    StorageBehavior_(Mutex<Option<S>>, fn(&mut S, &State, Option<Entity>) -> T),
 }
 
 impl<S: Send, T: Clone + 'static> super::PropertyValue for Behavior<S, T> {
-    fn get_value<'a>(&'a self, state: &'a State) -> Box<Any> {
+    fn get_value<'a>(&'a self, state: &'a State, entity: Option<Entity<'a>>) -> Box<Any> {
         match self {
             &Behavior(ConstantBehavior_(ref val)) => box val.clone() as Box<Any>,
             &Behavior(AliasBehavior_(ref val)) => {
-                let val: T = (*val)(state);
+                let val: T = (*val)(state, entity);
                 box val as Box<Any>
             },
             &Behavior(StorageBehavior_(ref current, ref function)) => {
                 let mut current_taken = current.lock().deref_mut().take()
                     .expect("Infinite recursive behaviors");
-                let result = (*function)(&mut current_taken, state);
+                let result = (*function)(&mut current_taken, state, entity);
                 (*current.lock()) = Some(current_taken);
                 box result as Box<Any>
             }

@@ -1,6 +1,8 @@
 use std::{iter, slice};
 
 pub struct StaticIndicesVec<T>(Vec<Option<T>>);
+
+#[deriving(Clone, Show, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Index(uint);
 
 impl<T> StaticIndicesVec<T> {
@@ -40,5 +42,13 @@ impl<T> StaticIndicesVec<T> {
     pub fn mut_iter<'a>(&'a mut self) -> iter::FilterMap<'a, &'a mut Option<T>, &mut T, slice::MutItems<'a, Option<T>>> {
         let &StaticIndicesVec(ref mut data) = self;
         data.mut_iter().filter_map(|i| i.as_mut())
+    }
+
+    pub fn get(&mut self, index: &Index) -> Option<&T> {
+        self.0.as_slice().get(index.0).and_then(|v| v.as_ref())
+    }
+
+    pub fn get_mut(&mut self, index: &Index) -> Option<&mut T> {
+        self.0.as_mut_slice().get_mut(index.0).and_then(|v| v.as_mut())
     }
 }
