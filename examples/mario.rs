@@ -16,14 +16,18 @@ struct Clock;
 impl frp::Property<f32> for Clock {}
 
 fn main() {
+    // initializing the state
     let state = init();
 
     // main loop
     let mut timer = std::io::timer::Timer::new().unwrap();
     let periodic = timer.periodic(std::time::Duration::milliseconds(16));
+
     loop {
         // printing mario's position
         println!("{}", state.entity(&state.get(Mario).unwrap()).unwrap().get(Position));
+
+        // waiting for next iteration
         periodic.recv();
     }
 }
