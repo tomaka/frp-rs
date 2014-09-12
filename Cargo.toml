@@ -1,0 +1,5 @@
+[package]
+
+name = "frp"
+version = "0.0.1"
+authors = ["Tomaka17 <pierre.krieger1708@gmail.com>"]
